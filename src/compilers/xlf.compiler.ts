@@ -1,6 +1,6 @@
 import { ValidationError, XMLBuilder, XMLParser, XMLValidator } from 'fast-xml-parser';
-import { TranslationCollection, TranslationType } from '../utils/translation.collection';
-import { CompilerInterface } from './compiler.interface';
+import { TranslationCollection, TranslationType } from '../utils/translation.collection.js';
+import { CompilerInterface } from './compiler.interface.js';
 
 export interface TranslationUnit {
 	'@_id': string;
@@ -32,9 +32,8 @@ export class XlfCompiler implements CompilerInterface {
 
 		this.builder = new XMLBuilder({
 			ignoreAttributes: false,
-			format: true
-			// suppressEmptyNode: false,
-			// preserveOrder: true,
+			format: true,
+			suppressEmptyNode: false
 		});
 	}
 
@@ -48,16 +47,18 @@ export class XlfCompiler implements CompilerInterface {
 			throw new Error(`Invalid XLIFF: missing xliff / xlif.file / xliff.file.body element`);
 		}
 		const translationUnits: TranslationUnit[] | TranslationUnit = translations.xliff.file.body['trans-unit'];
-		const translationType = (Array.isArray(translationUnits) ? translationUnits : [translationUnits]).reduce((acc, unit) => {
-			const id = unit['@_id'];
-			if (!id || !unit.target) {
-				return acc;
-			}
-			return {
-				...acc,
-				[id]: unit.target['#text']
-			};
-		}, {} as TranslationType);
+		const translationType = (Array.isArray(translationUnits) ? translationUnits : [translationUnits])
+			.filter((unit) => {
+				const id = unit['@_id'];
+				return id && unit.target;
+			})
+			.reduce(
+				(acc, unit) => ({
+					...acc,
+					[unit['@_id']]: unit.target['#text']
+				}),
+				{} as TranslationType
+			);
 		return new TranslationCollection(translationType);
 	}
 
@@ -74,9 +75,9 @@ export class XlfCompiler implements CompilerInterface {
 							return {
 								'@_id': key,
 								'@_datatype': 'html',
-								source: value,
+								source: value ?? key,
 								target: {
-									'#text': value,
+									'#text': value ?? key,
 									'@_state': 'translated'
 								}
 							};

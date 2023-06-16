@@ -5,8 +5,7 @@ import { PostProcessorInterface } from '../../post-processors/post-processor.int
 import { CompilerInterface } from '../../compilers/compiler.interface.js';
 
 import { cyan, green, bold, dim, red } from 'colorette';
-import pkg from 'glob';
-const { sync } = pkg;
+import { sync } from 'glob';
 import * as fs from 'fs';
 import * as path from 'path';
 

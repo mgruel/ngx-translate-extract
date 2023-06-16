@@ -16,6 +16,7 @@ export * from './compilers/compiler.factory.js';
 export * from './compilers/json.compiler.js';
 export * from './compilers/namespaced-json.compiler.js';
 export * from './compilers/po.compiler.js';
+export * from './compilers/xlf.compiler.js';
 
 export * from './post-processors/post-processor.interface.js';
 export * from './post-processors/key-as-default-value.post-processor.js';

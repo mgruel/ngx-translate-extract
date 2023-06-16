@@ -1,0 +1,92 @@
+import { ValidationError, XMLBuilder, XMLParser, XMLValidator } from 'fast-xml-parser';
+import { TranslationCollection, TranslationType } from '../utils/translation.collection';
+import { CompilerInterface } from './compiler.interface';
+
+export interface TranslationUnit {
+	'@_id': string;
+	'@_datatype': string;
+	source: string;
+	target: {
+		'#text': string;
+		'@_state': string;
+	};
+	'context-group'?: {
+		'@_purpose': string;
+		context: Array<{
+			'#text': string;
+			'@_context-type': string;
+		}>;
+	};
+}
+
+export class XlfCompiler implements CompilerInterface {
+	private readonly parser: XMLParser;
+	private readonly builder: XMLBuilder;
+
+	public extension: string = 'xlf';
+
+	constructor(options?: any) {
+		this.parser = new XMLParser({
+			ignoreAttributes: false
+		});
+
+		this.builder = new XMLBuilder({
+			ignoreAttributes: false,
+			format: true
+			// suppressEmptyNode: false,
+			// preserveOrder: true,
+		});
+	}
+
+	parse(contents: string): TranslationCollection {
+		const validationResult: boolean | ValidationError = XMLValidator.validate(contents);
+		if (validationResult !== true) {
+			throw new Error(`Invalid XML: ${validationResult.err.msg} at ${validationResult.err.line}:${validationResult.err.col}`);
+		}
+		const translations = this.parser.parse(contents);
+		if (!translations.xliff?.file?.body) {
+			throw new Error(`Invalid XLIFF: missing xliff / xlif.file / xliff.file.body element`);
+		}
+		const translationUnits: TranslationUnit[] | TranslationUnit = translations.xliff.file.body['trans-unit'];
+		const translationType = (Array.isArray(translationUnits) ? translationUnits : [translationUnits]).reduce((acc, unit) => {
+			const id = unit['@_id'];
+			if (!id || !unit.target) {
+				return acc;
+			}
+			return {
+				...acc,
+				[id]: unit.target['#text']
+			};
+		}, {} as TranslationType);
+		return new TranslationCollection(translationType);
+	}
+
+	compile(collection: TranslationCollection): string {
+		const target = {
+			'?xml': { '@_version': '1.0', '@_encoding': 'UTF-8' },
+			xliff: {
+				'@_xmlns': 'urn:oasis:names:tc:xliff:document:1.2',
+				'@_version': '1.2',
+				file: {
+					body: {
+						'trans-unit': Object.keys(collection.values).map((key) => {
+							const value = collection.values[key];
+							return {
+								'@_id': key,
+								'@_datatype': 'html',
+								source: value,
+								target: {
+									'#text': value,
+									'@_state': 'translated'
+								}
+							};
+						})
+					},
+					'@_datatype': 'plaintext',
+					'@_original': 'ng2.template'
+				}
+			}
+		};
+		return this.builder.build(target);
+	}
+}

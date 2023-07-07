@@ -5,7 +5,9 @@ import { CompilerInterface } from './compiler.interface.js';
 export interface TranslationUnit {
 	'@_id': string;
 	'@_datatype': string;
-	source: string;
+	source: {
+		'#text': string;
+	};
 	target: {
 		'#text': string;
 		'@_state': string;
@@ -19,13 +21,20 @@ export interface TranslationUnit {
 	};
 }
 
+export interface TranslationContext {
+	source: string;
+	target: string;
+}
+
 export class XlfCompiler implements CompilerInterface {
+	private readonly sourceLanguage: string;
 	private readonly parser: XMLParser;
 	private readonly builder: XMLBuilder;
 
 	public extension: string = 'xlf';
 
 	constructor(options?: any) {
+		this.sourceLanguage = options?.sourceLanguage ?? 'en';
 		this.parser = new XMLParser({
 			ignoreAttributes: false
 		});
@@ -50,15 +59,14 @@ export class XlfCompiler implements CompilerInterface {
 		const translationType = (Array.isArray(translationUnits) ? translationUnits : [translationUnits])
 			.filter((unit) => {
 				const id = unit['@_id'];
-				return id && unit.target;
+				return id && unit.source && unit.target;
 			})
-			.reduce(
-				(acc, unit) => ({
+			.reduce((acc, unit) => {
+				return {
 					...acc,
 					[unit['@_id']]: unit.target['#text']
-				}),
-				{} as TranslationType
-			);
+				};
+			}, {} as TranslationType);
 		return new TranslationCollection(translationType);
 	}
 
@@ -69,15 +77,18 @@ export class XlfCompiler implements CompilerInterface {
 				'@_xmlns': 'urn:oasis:names:tc:xliff:document:1.2',
 				'@_version': '1.2',
 				file: {
+					'@_source-language': this.sourceLanguage,
 					body: {
 						'trans-unit': Object.keys(collection.values).map((key) => {
-							const value = collection.values[key];
+							const targetValue = collection.values[key];
 							return {
 								'@_id': key,
 								'@_datatype': 'html',
-								source: value ?? key,
+								source: {
+									'#text': key
+								},
 								target: {
-									'#text': value ?? key,
+									'#text': targetValue,
 									'@_state': 'translated'
 								}
 							};

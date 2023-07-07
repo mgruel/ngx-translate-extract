@@ -1,22 +1,22 @@
 // @ts-ignore
+import { green, red } from 'colorette';
 import yargs from 'yargs';
-import { red, green } from 'colorette';
 
-import { ExtractTask } from './tasks/extract.task.js';
+import { CompilerFactory } from '../compilers/compiler.factory.js';
+import { CompilerInterface } from '../compilers/compiler.interface.js';
+import { DirectiveParser } from '../parsers/directive.parser.js';
+import { MarkerParser } from '../parsers/marker.parser.js';
 import { ParserInterface } from '../parsers/parser.interface.js';
 import { PipeParser } from '../parsers/pipe.parser.js';
-import { DirectiveParser } from '../parsers/directive.parser.js';
 import { ServiceParser } from '../parsers/service.parser.js';
-import { MarkerParser } from '../parsers/marker.parser.js';
-import { PostProcessorInterface } from '../post-processors/post-processor.interface.js';
-import { SortByKeyPostProcessor } from '../post-processors/sort-by-key.post-processor.js';
 import { KeyAsDefaultValuePostProcessor } from '../post-processors/key-as-default-value.post-processor.js';
 import { NullAsDefaultValuePostProcessor } from '../post-processors/null-as-default-value.post-processor.js';
-import { StringAsDefaultValuePostProcessor } from '../post-processors/string-as-default-value.post-processor.js';
+import { PostProcessorInterface } from '../post-processors/post-processor.interface.js';
 import { PurgeObsoleteKeysPostProcessor } from '../post-processors/purge-obsolete-keys.post-processor.js';
-import { CompilerInterface } from '../compilers/compiler.interface.js';
-import { CompilerFactory } from '../compilers/compiler.factory.js';
+import { SortByKeyPostProcessor } from '../post-processors/sort-by-key.post-processor.js';
+import { StringAsDefaultValuePostProcessor } from '../post-processors/string-as-default-value.post-processor.js';
 import { normalizePaths } from '../utils/fs-helpers.js';
+import { ExtractTask } from './tasks/extract.task.js';
 
 // First parsing pass to be able to access pattern argument for use input/output arguments
 const y = yargs().option('patterns', {
@@ -65,6 +65,12 @@ export const cli: any = y
 		default: 'json',
 		type: 'string',
 		choices: ['json', 'namespaced-json', 'pot', 'xlf']
+	})
+	.option('source-language', {
+		alias: 'sl',
+		describe: 'Source language',
+		default: 'en',
+		type: 'string'
 	})
 	.option('format-indentation', {
 		alias: 'fi',
@@ -146,7 +152,8 @@ extractTask.setPostProcessors(postProcessors);
 
 // Compiler
 const compiler: CompilerInterface = CompilerFactory.create(cli.format, {
-	indentation: cli.formatIndentation
+	indentation: cli.formatIndentation,
+	sourceLanguage: cli.sourceLanguage
 });
 extractTask.setCompiler(compiler);
 
